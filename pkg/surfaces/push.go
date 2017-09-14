@@ -21,7 +21,7 @@ type PushLayout struct {
 		} `json:"Slider"`
 	} `json:"Parts"`
 	Layout struct {
-		XY [][]int `json:"xy"`
+		XY [][]int `json:"XY"`
 	} `json:"layout"`
 }
 

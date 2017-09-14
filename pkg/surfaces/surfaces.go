@@ -146,16 +146,27 @@ func (s *Surface) handleMessage() {
 			}
 		default:
 		}
-		// if event.Status == 144 {
-		// 	s.handleNote(s.Note[event.Data1], event)
-		// }
-		// if event.Status == 176 {
-		// 	s.handleCC(s.Note[event.Data1], event)
-		// }
+
 	}
 	s.wg.Done()
 }
 
+func (s *Surface) WritePushSysEx(b []byte) {
+	s.OutputMIDIStream.WriteSysExBytes(portmidi.Time(), preparePushSysEx(b))
+}
+
 func processEvent(e Event) {
 	fmt.Println(e)
+
+}
+
+func preparePushSysEx(b []byte) []byte {
+	prefix := []byte{0xF0, 0x00, 0x21, 0x1D, 0x01, 0x01}
+	suffix := []byte{0xF7}
+	var sysex []byte
+	sysex = append(sysex, prefix...)
+	sysex = append(sysex, b...)
+	sysex = append(sysex, suffix...)
+
+	return sysex
 }
