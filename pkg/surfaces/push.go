@@ -1,7 +1,10 @@
 package surfaces
 
-type Push struct {
-	Color string
+type PushConfig struct {
+	MIDI struct {
+		Input  string `json:"input"`
+		Output string `json:"output"`
+	} `json:"midi"`
 }
 
 type PushLayout struct {
