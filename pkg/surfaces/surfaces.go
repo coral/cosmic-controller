@@ -26,10 +26,28 @@ type Surface struct {
 	}
 	Layout PushLayout
 
-	InputStream  *portmidi.Stream
-	OutputStream *portmidi.Stream
+	Note map[int64]Trigger
+	CC   map[int64]Trigger
+
+	InputMIDIStream  *portmidi.Stream
+	OutputMIDIStream *portmidi.Stream
+
+	InputChannel <-chan portmidi.Event
 
 	wg *sync.WaitGroup
+}
+
+type Trigger interface {
+	Handle(status string, e portmidi.Event) Event
+}
+
+type Event struct {
+	EventID string
+	Number  int
+	Type    string
+	Message string
+	Name    string
+	Raw     portmidi.Event
 }
 
 func (s *Surface) CreateSurfaceFromFile(longname string, name string) {
@@ -40,6 +58,27 @@ func (s *Surface) CreateSurfaceFromFile(longname string, name string) {
 		log.Fatal("Could not load layout.json")
 	}
 	json.Unmarshal(raw, &s.Layout)
+
+	s.Note = make(map[int64]Trigger)
+	s.CC = make(map[int64]Trigger)
+
+	for _, element := range s.Layout.Parts.Pads {
+		t := element
+		s.Note[int64(element.Number)] = t
+	}
+
+	for _, element := range s.Layout.Parts.Buttons {
+		t := element
+		s.CC[int64(element.Number)] = t
+	}
+
+	for _, element := range s.Layout.Parts.RotaryEncoders {
+		t := element
+		s.Note[int64(element.Touch.Number)] = t.Touch
+		s.CC[int64(element.Number)] = t
+	}
+
+	s.Note[int64(s.Layout.Parts.Slider.Touch.Number)] = s.Layout.Parts.Slider.Touch
 
 	t := PushConfig{}
 	raw, err = ioutil.ReadFile(filepath.Join(name, "config.json"))
@@ -66,9 +105,8 @@ func (s *Surface) Bind(m midi.Handler, parentWg *sync.WaitGroup) {
 	if err != nil {
 		log.Print(err)
 	}
-	s.InputStream = is
-
-	go s.handle()
+	s.InputMIDIStream = is
+	go s.handleMessage()
 
 	o, err := m.FindDevice(s.Config.MIDI.InputRegex, "output")
 	if err != nil {
@@ -78,17 +116,46 @@ func (s *Surface) Bind(m midi.Handler, parentWg *sync.WaitGroup) {
 	if err != nil {
 		log.Print(err)
 	}
-	s.OutputStream = os
+	s.OutputMIDIStream = os
 
 	log.Print("Surface '", s.Name, "'Bound")
 }
 
-func (s *Surface) handle() {
-	defer s.InputStream.Close()
-	ch := s.InputStream.Listen()
+func (s *Surface) handleMessage() {
+	defer s.InputMIDIStream.Close()
+	ch := s.InputMIDIStream.Listen()
 	for {
 		event := <-ch
-		fmt.Println(event)
+
+		switch event.Status {
+		case 144:
+			//NOTE ON
+			go processEvent(s.Note[event.Data1].Handle("Note On", event))
+		case 128:
+			//NOTE OFF
+			go processEvent(s.Note[event.Data1].Handle("Note Off", event))
+		case 176:
+			//CC
+			switch event.Data2 {
+			case 0:
+				//CC ON
+				go processEvent(s.CC[event.Data1].Handle("CC On", event))
+			case 127:
+				//CC OFF
+				go processEvent(s.CC[event.Data1].Handle("CC Off", event))
+			}
+		default:
+		}
+		// if event.Status == 144 {
+		// 	s.handleNote(s.Note[event.Data1], event)
+		// }
+		// if event.Status == 176 {
+		// 	s.handleCC(s.Note[event.Data1], event)
+		// }
 	}
 	s.wg.Done()
+}
+
+func processEvent(e Event) {
+	fmt.Println(e)
 }
