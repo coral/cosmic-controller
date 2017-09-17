@@ -24,8 +24,9 @@ type Surface struct {
 	}
 	Layout PushLayout
 
-	Note map[int64]Trigger
-	CC   map[int64]Trigger
+	Note      map[int64]Trigger
+	CC        map[int64]Trigger
+	PitchBend Trigger
 
 	InputMIDIStream  *portmidi.Stream
 	OutputMIDIStream *portmidi.Stream
@@ -59,6 +60,7 @@ func (s *Surface) CreateSurfaceFromFile(longname string, name string) {
 
 	s.Note = make(map[int64]Trigger)
 	s.CC = make(map[int64]Trigger)
+	s.PitchBend = PushTouchable{}
 
 	for _, element := range s.Layout.Parts.Pads {
 		t := element
@@ -131,7 +133,6 @@ func (s *Surface) handleMessage() {
 	ch := s.InputMIDIStream.Listen()
 	for {
 		event := <-ch
-
 		switch event.Status {
 		case 144:
 			//NOTE ON
@@ -142,6 +143,9 @@ func (s *Surface) handleMessage() {
 		case 176:
 			//CC
 			go s.processEvent(s.CC[event.Data1].Handle("CC", event))
+		case 224:
+			//CC
+			go s.processEvent(s.PitchBend.Handle("Pitchbend", event))
 		default:
 		}
 
