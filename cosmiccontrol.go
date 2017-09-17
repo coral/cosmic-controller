@@ -20,7 +20,8 @@ func main() {
 	s.Bind(m, &wg)
 
 	lm := layers.LayerManager{}
-	lm.Initalize(s.NewListener())
+	lm.Initalize(&s)
+	lm.LoadBindingsFromFile("./data/surfaces/push")
 
 	wg.Wait()
 }

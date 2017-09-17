@@ -26,6 +26,7 @@ type Surface struct {
 	Note      map[int64]Trigger
 	CC        map[int64]Trigger
 	PitchBend Trigger
+	Triggers  map[string]Trigger
 
 	InputMIDIStream  *portmidi.Stream
 	OutputMIDIStream *portmidi.Stream
@@ -62,21 +63,25 @@ func (s *Surface) CreateSurfaceFromFile(longname string, name string) {
 	s.Note = make(map[int64]Trigger)
 	s.CC = make(map[int64]Trigger)
 	s.PitchBend = PushTouchable{}
+	s.Triggers = make(map[string]Trigger)
 
 	for _, element := range s.Layout.Parts.Pads {
 		t := element
 		s.Note[int64(element.Number)] = t
+		s.Triggers[element.Name] = t
 	}
 
 	for _, element := range s.Layout.Parts.Buttons {
 		t := element
 		s.CC[int64(element.Number)] = t
+		s.Triggers[element.Name] = t
 	}
 
 	for _, element := range s.Layout.Parts.RotaryEncoders {
 		t := element
 		s.Note[int64(element.Touch.Number)] = t.Touch
 		s.CC[int64(element.Number)] = t
+		s.Triggers[element.Name] = t
 	}
 
 	s.Note[int64(s.Layout.Parts.Slider.Touch.Number)] = s.Layout.Parts.Slider.Touch
