@@ -34,8 +34,16 @@ type PushPressable struct {
 }
 
 func (pt PushPressable) Handle(status string, e portmidi.Event) Event {
+	st := status
+	if status == "CC" {
+		if e.Data2 == 127 {
+			st = "On"
+		} else {
+			st = "Off"
+		}
+	}
 	return Event{
-		EventID: status,
+		EventID: st,
 		Number:  pt.Number,
 		Type:    pt.Type,
 		Message: pt.Message,
@@ -53,8 +61,14 @@ type PushRotaryEncoder struct {
 }
 
 func (pt PushRotaryEncoder) Handle(status string, e portmidi.Event) Event {
+	var st string
+	if e.Data2 < 64 {
+		st = "increment"
+	} else {
+		st = "decrement"
+	}
 	return Event{
-		EventID: status,
+		EventID: st,
 		Number:  pt.Number,
 		Type:    pt.Type,
 		Message: pt.Message,

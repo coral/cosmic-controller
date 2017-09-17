@@ -135,20 +135,13 @@ func (s *Surface) handleMessage() {
 		switch event.Status {
 		case 144:
 			//NOTE ON
-			go s.processEvent(s.Note[event.Data1].Handle("Note On", event))
+			go s.processEvent(s.Note[event.Data1].Handle("On", event))
 		case 128:
 			//NOTE OFF
-			go s.processEvent(s.Note[event.Data1].Handle("Note Off", event))
+			go s.processEvent(s.Note[event.Data1].Handle("Off", event))
 		case 176:
 			//CC
-			switch event.Data2 {
-			case 0:
-				//CC ON
-				go s.processEvent(s.CC[event.Data1].Handle("CC On", event))
-			case 127:
-				//CC OFF
-				go s.processEvent(s.CC[event.Data1].Handle("CC Off", event))
-			}
+			go s.processEvent(s.CC[event.Data1].Handle("CC", event))
 		default:
 		}
 
@@ -162,7 +155,7 @@ func (s *Surface) WritePushSysEx(b []byte) {
 
 func (s *Surface) processEvent(e Event) {
 	fmt.Println(e)
-	s.OutputMIDIStream.WriteShort(144, int64(e.Number), 125)
+	//s.OutputMIDIStream.WriteShort(144, int64(e.Number), 125)
 
 }
 
