@@ -2,7 +2,6 @@ package surfaces
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -32,6 +31,8 @@ type Surface struct {
 	OutputMIDIStream *portmidi.Stream
 
 	InputChannel <-chan portmidi.Event
+
+	Listeners []chan<- Event
 
 	wg *sync.WaitGroup
 }
@@ -128,6 +129,12 @@ func (s *Surface) Bind(m midi.Handler, parentWg *sync.WaitGroup) {
 	log.Print("Surface '", s.Name, "'Bound")
 }
 
+func (s *Surface) NewListener() <-chan Event {
+	nc := make(chan Event)
+	s.Listeners = append(s.Listeners, nc)
+	return nc
+}
+
 func (s *Surface) handleMessage() {
 	defer s.InputMIDIStream.Close()
 	ch := s.InputMIDIStream.Listen()
@@ -158,9 +165,9 @@ func (s *Surface) WritePushSysEx(b []byte) {
 }
 
 func (s *Surface) processEvent(e Event) {
-	fmt.Println(e)
-	//s.OutputMIDIStream.WriteShort(144, int64(e.Number), 125)
-
+	for _, listener := range s.Listeners {
+		listener <- e
+	}
 }
 
 func preparePushSysEx(b []byte) []byte {

@@ -3,6 +3,7 @@ package main
 import (
 	"sync"
 
+	"github.com/coral/cosmic-controller/pkg/layers"
 	"github.com/coral/cosmic-controller/pkg/midi"
 	"github.com/coral/cosmic-controller/pkg/surfaces"
 )
@@ -17,6 +18,9 @@ func main() {
 	s.CreateSurfaceFromFile("Ableton Push 2", "./data/surfaces/push")
 	wg.Add(1)
 	s.Bind(m, &wg)
+
+	lm := layers.LayerManager{}
+	lm.Initalize(s.NewListener())
 
 	wg.Wait()
 }
