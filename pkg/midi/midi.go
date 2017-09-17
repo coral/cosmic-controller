@@ -11,9 +11,23 @@ import (
 type Handler struct {
 }
 
+type MIDIDevice struct {
+	Name      string
+	Regex     *regexp.Regexp
+	Direction string
+}
+
 func Create() Handler {
 	portmidi.Initialize()
 	v := Handler{}
+	log.Println("MIDI initialized")
+	log.Println("Found these MIDI Devices:")
+	t := v.GetDevices()
+
+	for i, e := range t {
+
+		log.Println("DEVICE:", i, e.Name)
+	}
 	return v
 }
 
@@ -26,19 +40,20 @@ func (h *Handler) GetDevices() map[int]*portmidi.DeviceInfo {
 	return r
 }
 
-func (h *Handler) FindDevice(r *regexp.Regexp, direction string) (portmidi.DeviceID, error) {
+func (h *Handler) FindDevice(dc MIDIDevice) (portmidi.DeviceID, error) {
+
 	for i := 0; i < portmidi.CountDevices(); i++ {
 		d := portmidi.Info(portmidi.DeviceID(i))
-		if r.MatchString(d.Name) {
-			if direction == "input" && d.IsInputAvailable {
+		if dc.Regex.MatchString(d.Name) {
+			if dc.Direction == "input" && d.IsInputAvailable {
 				return portmidi.DeviceID(i), nil
 			}
-			if direction == "output" && d.IsOutputAvailable {
+			if dc.Direction == "output" && d.IsOutputAvailable {
 				return portmidi.DeviceID(i), nil
 			}
 		}
 	}
-	return portmidi.DeviceID(0), fmt.Errorf("Could not find device")
+	return portmidi.DeviceID(0), fmt.Errorf("Could not find device ")
 }
 
 func (h *Handler) NewOutputStream(id portmidi.DeviceID) (*portmidi.Stream, error) {

@@ -18,10 +18,8 @@ type Surface struct {
 	Name   string
 	Config struct {
 		MIDI struct {
-			InputName   string
-			InputRegex  *regexp.Regexp
-			OutputName  string
-			OutputRegex *regexp.Regexp
+			Input  midi.MIDIDevice
+			Output midi.MIDIDevice
 		}
 	}
 	Layout PushLayout
@@ -87,28 +85,35 @@ func (s *Surface) CreateSurfaceFromFile(longname string, name string) {
 	}
 	json.Unmarshal(raw, &t)
 
-	s.Config.MIDI.InputName = t.MIDI.Input
-	s.Config.MIDI.InputRegex = regexp.MustCompile(`(` + s.Config.MIDI.InputName + `)`)
-	s.Config.MIDI.OutputName = t.MIDI.Output
-	s.Config.MIDI.OutputRegex = regexp.MustCompile(`(` + s.Config.MIDI.OutputName + `)`)
+	s.Config.MIDI.Input = midi.MIDIDevice{
+		Name:      t.MIDI.Input,
+		Regex:     regexp.MustCompile(`(` + t.MIDI.Input + `)`),
+		Direction: "input",
+	}
+
+	s.Config.MIDI.Output = midi.MIDIDevice{
+		Name:      t.MIDI.Output,
+		Regex:     regexp.MustCompile(`(` + t.MIDI.Output + `)`),
+		Direction: "output",
+	}
 
 	log.Print("Surface '", s.Name, "'Loaded")
 }
 
 func (s *Surface) Bind(m midi.Handler, parentWg *sync.WaitGroup) {
 	s.wg = parentWg
-	i, err := m.FindDevice(s.Config.MIDI.InputRegex, "input")
+	i, err := m.FindDevice(s.Config.MIDI.Input)
 	if err != nil {
-		log.Print(err)
+		log.Fatal(err)
 	}
 	is, err := m.NewInputStream(i)
 	if err != nil {
-		log.Print(err)
+		log.Fatal(err)
 	}
 	s.InputMIDIStream = is
 	go s.handleMessage()
 
-	o, err := m.FindDevice(s.Config.MIDI.InputRegex, "output")
+	o, err := m.FindDevice(s.Config.MIDI.Output)
 	if err != nil {
 		log.Print(err)
 	}
@@ -130,19 +135,19 @@ func (s *Surface) handleMessage() {
 		switch event.Status {
 		case 144:
 			//NOTE ON
-			go processEvent(s.Note[event.Data1].Handle("Note On", event))
+			go s.processEvent(s.Note[event.Data1].Handle("Note On", event))
 		case 128:
 			//NOTE OFF
-			go processEvent(s.Note[event.Data1].Handle("Note Off", event))
+			go s.processEvent(s.Note[event.Data1].Handle("Note Off", event))
 		case 176:
 			//CC
 			switch event.Data2 {
 			case 0:
 				//CC ON
-				go processEvent(s.CC[event.Data1].Handle("CC On", event))
+				go s.processEvent(s.CC[event.Data1].Handle("CC On", event))
 			case 127:
 				//CC OFF
-				go processEvent(s.CC[event.Data1].Handle("CC Off", event))
+				go s.processEvent(s.CC[event.Data1].Handle("CC Off", event))
 			}
 		default:
 		}
@@ -155,8 +160,9 @@ func (s *Surface) WritePushSysEx(b []byte) {
 	s.OutputMIDIStream.WriteSysExBytes(portmidi.Time(), preparePushSysEx(b))
 }
 
-func processEvent(e Event) {
+func (s *Surface) processEvent(e Event) {
 	fmt.Println(e)
+	s.OutputMIDIStream.WriteShort(144, int64(e.Number), 125)
 
 }
 
