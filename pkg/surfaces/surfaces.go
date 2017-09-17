@@ -143,13 +143,25 @@ func (s *Surface) handleMessage() {
 		switch event.Status {
 		case 144:
 			//NOTE ON
-			go s.processEvent(s.Note[event.Data1].Handle("On", event))
+			if trig, ok := s.Note[event.Data1]; ok {
+				go s.processEvent(trig.Handle("On", event))
+			} else {
+				log.Println("Unmapped trigger:", event)
+			}
 		case 128:
 			//NOTE OFF
-			go s.processEvent(s.Note[event.Data1].Handle("Off", event))
+			if trig, ok := s.Note[event.Data1]; ok {
+				go s.processEvent(trig.Handle("Off", event))
+			} else {
+				log.Println("Unmapped trigger:", event)
+			}
 		case 176:
 			//CC
-			go s.processEvent(s.CC[event.Data1].Handle("CC", event))
+			if trig, ok := s.CC[event.Data1]; ok {
+				go s.processEvent(trig.Handle("CC", event))
+			} else {
+				log.Println("Unmapped trigger:", event)
+			}
 		case 224:
 			//CC
 			go s.processEvent(s.PitchBend.Handle("Pitchbend", event))
