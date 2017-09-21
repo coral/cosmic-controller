@@ -52,9 +52,10 @@ func (lm *LayerManager) LoadBindingsFromFile(name string) {
 		for j, y := range x {
 			newXY[i+1][j+1] = Binding{
 				Name:    y.Name,
-				Trigger: lm.Surface.Triggers[y.Name],
+				Trigger: lm.Surface.Triggers[y.Bind],
 			}
 		}
 	}
 	lm.Bindings.XY = newXY
+	fmt.Println(newXY[2][4])
 }
